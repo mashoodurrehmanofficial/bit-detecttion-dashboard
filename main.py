@@ -85,12 +85,12 @@ def getBotSourceDataTable():
         elif index==1:
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("baidu|google|bing|duckduckgo")    ]
         elif index==2:
-            temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("baidu|google|facebook|t.co")    ]
+            temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("facebook|t.co")    ]
         elif index==3:
-            temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("site-tracking.com")    ]
+            temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("site-tracking.com|fizzsy")    ]
+            print("------> ",temp_df2.shape)
         elif index==4:
             temp_df2 = local_df[  (local_df['javascript.enabled'] == 'None') ]
-            # print(temp_df2.shape)
             
             
             
