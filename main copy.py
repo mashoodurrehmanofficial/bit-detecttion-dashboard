@@ -6,39 +6,24 @@ from datetime import date
 import pandas as pd
 import plotly.graph_objects as go 
 from urllib.parse import urlparse
+
 import plotly.express as px
 import pandas as pd
 from datetime import datetime
 import plotly.graph_objects as go
 from urllib.parse import urlparse
-import sqlite3,time,flask,base64
-from flask import request
-import dash_auth
-try:
-    from .jsonReader import configHandler
-except:
-    from jsonReader import configHandler
-
-
-
-
+import sqlite3,time
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
 
-start_date_object =date(2022, 4, 1)
-end_date_object =date(2022, 4, 25)
-start_date = time.mktime(datetime.strptime(str(start_date_object), "%Y-%m-%d").timetuple())
-end_date = time.mktime(datetime.strptime(str(end_date_object), "%Y-%m-%d").timetuple())
 
-sql_data = 'database.db'
-conn = sqlite3.connect(sql_data,check_same_thread=False)
-conn.row_factory = dict_factory
 
-def prepareDataframe(start_date, end_date, client_id="3blue"):
-    print("Preparing DF for ", client_id)
+
+def prepareDataframe(start_date, end_date, client_id='3blue'):
+    
     query ="""SELECT `javascript.enabled`, `document.referrer`, validity, `server.country`, `server.useragent.info`, `server.region`, count(id) as visits FROM sample_sql_db
     WHERE `pixel.timestamp` > {}
     AND `pixel.timestamp` < {}
@@ -46,42 +31,32 @@ def prepareDataframe(start_date, end_date, client_id="3blue"):
     GROUP BY `javascript.enabled`, `document.referrer`, validity, `server.country`, `server.useragent.info`, `server.region`
     ORDER BY visits DESC""".format(start_date, end_date, client_id)
     records = conn.execute(query).fetchall()
+
     columns = ['javascript.enabled','document.referrer','validity','server.country','server.useragent.info','server.region','visits']
     df = pd.DataFrame(data=[x.values() for x in records],columns=columns)
-    df['document.referrer'] = df['document.referrer'].astype(str)
-    df['javascript.enabled'] = df['javascript.enabled'].astype(str)    
-
     return df
 
 
-VALID_USERNAME_PASSWORD_PAIRS = {
-    'hello': 'world'
-}
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
-auth = dash_auth.BasicAuth(
-    app, 
-    configHandler().getUserPassDict() 
-)
-
- 
-
-
-
-
 app.title = "Traffic Analysis"
 
-df = prepareDataframe(start_date=start_date,end_date=end_date)
- 
+df = pd.read_excel(open("data.xlsx",'rb'), sheet_name='Sheet1')
+
+sql_data = 'database.db'
+conn = sqlite3.connect(sql_data,check_same_thread=False)
+conn.row_factory = dict_factory
+
+
 def getBotSourceDataTable():
     alphabetical = ['Direct', 'Search', 'Social',  'Display' , 'Unknown']
     tbody = []
     local_df = df
-    temp_df = local_df[(local_df['javascript.enabled'] == '1') |  (local_df['javascript.enabled'] == "true")]
+    temp_df = local_df[(local_df['javascript.enabled'] == 1) |  (local_df['javascript.enabled'] == True)]
 
     for index,source in enumerate(alphabetical[:]):
     #     # Direct
         if index==0:
-            temp_df2 = temp_df[  (temp_df['document.referrer'] == 'None') ]
+            temp_df2 = temp_df[  (temp_df['document.referrer'] == '[NULL]') ]
         elif index==1:
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("baidu|google|bing|duckduckgo")    ]
         elif index==2:
@@ -89,17 +64,17 @@ def getBotSourceDataTable():
         elif index==3:
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("site-tracking.com")    ]
         elif index==4:
-            temp_df2 = local_df[  (local_df['javascript.enabled'] == 'None') ]
+            temp_df2 = local_df[  (local_df['javascript.enabled'] == '[NULL]') ]
             # print(temp_df2.shape)
             
             
             
             
-        total_rows = temp_df2["visits"].sum()
+        total_rows = temp_df2.shape[0]
         if total_rows>0:
-            humans = round(temp_df2[(temp_df2['validity']=='valid')]["visits"].sum() / total_rows * 100,2)
-            bots = round(temp_df2[(temp_df2['validity']=='invalid') | (temp_df2['validity']=='suspicious')]["visits"].sum() / total_rows * 100,2)
-            unknown = round(temp_df2[(temp_df2['validity']=='unknown')]["visits"].sum() / total_rows * 100,2)
+            humans = round(temp_df2[(temp_df2['validity']=='valid')].shape[0] / total_rows * 100,2)
+            bots = round(temp_df2[(temp_df2['validity']=='invalid') | (temp_df2['validity']=='suspicious')].shape[0] / total_rows * 100,2)
+            unknown = round(temp_df2[(temp_df2['validity']=='unknown')].shape[0] / total_rows * 100,2)
         else:
             humans = 0
             bots = 0
@@ -111,7 +86,7 @@ def getBotSourceDataTable():
     tbody = sorted(tbody, key=lambda x: x[1])[::-1]
     
     return {
-        "thead": ["Bot Source", "Site Visitors", "% Humans", "% Bots","% Unknown"],
+        "thead": ["Bot Source", "Site Visitors", "% Humans", "% Bots"],
         "tbody": tbody,
         "filters": alphabetical,
         "dropdown_id":"bot_sources_dropdown",
@@ -137,14 +112,11 @@ def getDomainDataTabel():
     for index,source in enumerate(alphabetical[:]):
         temp_df = df[  df["document.referrer"].str.contains(source.lower(), na=False)    ]
         
-        total_rows = temp_df["visits"].sum()
-        
-        
-
+        total_rows = temp_df.shape[0]
         if total_rows>0:
-            humans = round(temp_df[(temp_df['validity']=='valid')]["visits"].sum() / total_rows * 100,2)
-            bots = round(temp_df[(temp_df['validity']=='invalid') | (temp_df['validity']=='suspicious')]["visits"].sum() / total_rows * 100,2)
-            unknown = round(temp_df[(temp_df['validity']=='unknown')]["visits"].sum() / total_rows * 100,2)
+            humans = round(temp_df[(temp_df['validity']=='valid')].shape[0] / total_rows * 100,2)
+            bots = round(temp_df[(temp_df['validity']=='invalid') | (temp_df['validity']=='suspicious')].shape[0] / total_rows * 100,2)
+            unknown = round(temp_df[(temp_df['validity']=='unknown')].shape[0] / total_rows * 100,2)
         else:
             humans = 0
             bots = 0
@@ -156,7 +128,7 @@ def getDomainDataTabel():
     alphabetical = [x.lower() for x in alphabetical if x] 
     tbody = sorted(tbody, key=lambda x: x[1])[::-1]
     return {
-        "thead": ["Bot Source", "Site Visitors", "% Humans", "% Bots","% Unknown"],
+        "thead": ["Bot Source", "Site Visitors", "% Humans", "% Bots"],
         "tbody": tbody,
         "filters": alphabetical,
         "dropdown_id":"domain_performance_dropdown",
@@ -177,12 +149,12 @@ def getCountryDataTable():
     tbody = []
     for index,source in enumerate(alphabetical[:]):
         temp_df = df[  (df['server.country'] ==  str(source) ) ]
-        total_rows = temp_df["visits"].sum() 
+        total_rows = temp_df.shape[0] 
         
-        if total_rows>0: 
-            humans = round(temp_df[(temp_df['validity']=='valid')]["visits"].sum() / total_rows * 100,2)
-            bots = round(temp_df[(temp_df['validity']=='invalid') | (temp_df['validity']=='suspicious')]["visits"].sum() / total_rows * 100,2)
-            unknown = round(temp_df[(temp_df['validity']=='unknown')]["visits"].sum() / total_rows * 100,2)
+        if total_rows>0:
+            humans = round(temp_df[(temp_df['validity']=='valid')].shape[0] / total_rows * 100,2)
+            bots = round(temp_df[(temp_df['validity']=='invalid') | (temp_df['validity']=='suspicious')].shape[0] / total_rows * 100,2)
+            unknown = round(temp_df[(temp_df['validity']=='unknown')].shape[0] / total_rows * 100,2)
         else:
             humans = 0
             bots = 0
@@ -193,11 +165,10 @@ def getCountryDataTable():
                 source, total_rows , humans, bots , unknown, {"show":True}
             ])
          
- 
         
     tbody = sorted(tbody, key=lambda x: x[1])[::-1]
     return {
-        "thead": ["Bot Source", "Site Visitors", "% Humans", "% Bots","% Unknown"],
+        "thead": ["Bot Source", "Site Visitors", "% Humans", "% Bots"],
         "tbody": tbody,
         "filters": alphabetical,
         "dropdown_id":"country_data_table_dropdown",
@@ -212,9 +183,6 @@ def getCountryDataTable():
 def getAllStates(country_name='United States'): 
     global df
     states = list(set(df['server.region'].values.tolist())) 
-    states = list(set([x for x in states if str(x) not in  ['[NULL]', 'nan','NULL','NONE'] ]))
-    states = [x for x in states if len(str(x))>0 and str(x)!='None' ]
-
     return [x for x in states if 'nan' not in  str(x).lower() and 'null' not in  str(x).lower()]
  
 def getChannelsList():
@@ -265,28 +233,16 @@ def generateStatPanelChilds(label='',data=''):
 def getStatBarData():
     global df
     temp_df = df 
-    total_site_users = temp_df["visits"].sum() 
-    if total_site_users>0:
-        humans = round(temp_df[(temp_df['validity']=='valid')]["visits"].sum()/total_site_users*100,2  ) 
-    else:
-        humans =0
-    invalid_bots = temp_df[temp_df["validity"].str.contains("invalid")]["visits"].sum()
-    total_bots = temp_df[temp_df["validity"].str.contains("invalid")]["visits"].sum() 
-    friendly_bots = temp_df[temp_df["server.useragent.info"].str.contains("bot") & temp_df["server.useragent.info"].str.contains("Googlebot|BingBot|yandex|archive.org") ]["visits"].sum()
-    if total_bots>0: 
-        friendly_bots = round(friendly_bots/total_bots*100 ,2)
-    else:
-        friendly_bots = 0
-        
+    total_site_users = temp_df.shape[0] 
+    humans = round(temp_df[(temp_df['validity']=='valid')].shape[0]/total_site_users*100,2  ) 
+    invalid_bots = temp_df[temp_df["validity"].str.contains("invalid")].shape[0]
+    total_bots = temp_df[temp_df["validity"].str.contains("invalid")].shape[0] 
+    friendly_bots = temp_df[temp_df["server.useragent.info"].str.contains("bot") & temp_df["server.useragent.info"].str.contains("Googlebot|BingBot|yandex|archive.org") ].shape[0]
+    friendly_bots = round(friendly_bots/total_bots*100 ,2)
     malicious_bots = invalid_bots - friendly_bots
-    if total_bots>0:    
-        malicious_bots = round(malicious_bots/total_bots*100,2)
-    else:
-        malicious_bots=0
-    if total_site_users>0:
-        bots = round(total_bots/total_site_users*100,2)
-    else:
-        bots=0
+    malicious_bots = round(malicious_bots/total_bots*100,2)
+    bots = round(total_bots/total_site_users*100,2)
+
 
     
     return {
@@ -360,7 +316,7 @@ map_select_state_dropdown = html.Div(
         dcc.Dropdown(
             id="map_select_state_dropdown",
             options=[
-                {"label": x, "value": x} for x in getAllStates() if len(str(x))>0
+                {"label": x, "value": x} for x in getAllStates()
             ],
         ),
     ],
@@ -392,7 +348,7 @@ map_header_div = html.Div(
 def getMapData():
     global df
     temp_df = df[  (df['server.country'] == 'United States') ]
-    total_rows = temp_df["visits"].sum()
+    total_rows = temp_df.shape[0]
     states = temp_df['server.region'].values.tolist()
     stateDictionary =  {"Alaska" : "AK", "Alabama" : "AL", "Arkansas" : "AR", "American Samoa" : "AS", "Arizona" : "AZ", "California" : "CA", "Colorado" : "CO", "Connecticut" : "CT", "District of Columbia" : "DC", "Delaware" : "DE", "Florida" : "FL", "Georgia" : "GA", "Guam" : "GU", "Hawaii" : "HI", "Iowa" : "IA", "Idaho" : "ID", "Illinois" : "IL", "Indiana" : "IN", "Kansas" : "KS", "Kentucky" : "KY", "Louisiana" : "LA", "Massachusetts" : "MA", "Maryland" : "MD", "Maine" : "ME", "Michigan" : "MI", "Minnesota" : "MN", "Missouri" : "MO", "Mississippi" : "MS", "Montana" : "MT", "North Carolina" : "NC", "North Dakota" : "ND", "Nebraska" : "NE", "New Hampshire" : "NH", "New Jersey" : "NJ", "New Mexico" : "NM", "Nevada" : "NV", "New York" : "NY", "Ohio" : "OH", "Oklahoma" : "OK", "Oregon" : "OR", "Pennsylvania" : "PA", "Puerto Rico" : "PR", "Rhode Island" : "RI", "South Carolina" : "SC", "South Dakota" : "SD", "Tennessee" : "TN", "Texas" : "TX", "Utah" : "UT", "Virginia" : "VA", "Virgin Islands" : "VI", "Vermont" : "VT", "Washington" : "WA", "Wisconsin" : "WI", "West Virginia" : "WV", "Wyoming" : "WY"}
     
@@ -411,19 +367,19 @@ def getMapData():
     
     for state in states:
         local = df[(df['server.region'] ==state)]
-        bots = local[local["validity"].str.contains("invalid")]["visits"].sum()
+        bots = local[local["validity"].str.contains("invalid")].shape[0]
         if bots>0:
-            bots = round(bots/local["visits"].sum() *100,2)
+            bots = round(bots/local.shape[0] *100,2)
         density.append(bots)    
         temp_df2 = df[  (df['server.region'] == state) ] 
-        total_site_users = temp_df2["visits"].sum() 
+        total_site_users = temp_df2.shape[0] 
         if total_site_users>0:
-            humans = round(temp_df2[(temp_df2['validity']=='valid')]["visits"].sum()/total_site_users*100,2  ) 
+            humans = round(temp_df2[(temp_df2['validity']=='valid')].shape[0]/total_site_users*100,2  ) 
         else:
             humans=0
-        invalid_bots = temp_df2[temp_df2["validity"].str.contains("invalid")]["visits"].sum()
-        total_bots = temp_df2[temp_df2["validity"].str.contains("invalid")]["visits"].sum() 
-        friendly_bots = temp_df2[temp_df2["server.useragent.info"].str.contains("bot") & temp_df2["server.useragent.info"].str.contains("Googlebot|BingBot|yandex|archive.org") ]["visits"].sum()
+        invalid_bots = temp_df2[temp_df2["validity"].str.contains("invalid")].shape[0]
+        total_bots = temp_df2[temp_df2["validity"].str.contains("invalid")].shape[0] 
+        friendly_bots = temp_df2[temp_df2["server.useragent.info"].str.contains("bot") & temp_df2["server.useragent.info"].str.contains("Googlebot|BingBot|yandex|archive.org") ].shape[0]
         if total_bots>0:
             friendly_bots = round(friendly_bots/total_bots*100 ,2)
             malicious_bots = invalid_bots - friendly_bots
@@ -442,10 +398,8 @@ def getMapData():
         percentage_malicious_bots.append(malicious_bots)
         
         
-         
     states = [stateDictionary[x] for x in states]
     density = [100 if x>10 else 0 for x in density]
-    # density = [100 if x>99 else x for x in density]
     percentage_malicious_bots = [x if x>0 else 0 for x in percentage_malicious_bots]
     percentage_bots = [str(x)+"%" for x in percentage_bots]
     percentage_humans = [str(x)+"%" for x in percentage_humans]
@@ -584,7 +538,6 @@ def generateTable(data,top_bar_required=True):
                         html.Td(row[1]), 
                         html.Td(str(row[2])+"%"), 
                         html.Td(str(row[3])+"%"), 
-                        html.Td(str(row[4])+"%"), 
                     ]
                 )
             )
@@ -615,7 +568,8 @@ domain_data_table_init_form = getDomainDataTabel()
 country_data_table_init_form = getCountryDataTable()
 
 
-
+start_date_object =date(2022, 4, 1)
+end_date_object =date(2022, 4, 25)
 
 def generateDateFilterDiv():
     return html.Div(
@@ -697,7 +651,8 @@ def generateRightPanel():
     State('start_date_picker', 'date'),
     State('end_date_picker', 'date'),
 )
-def update_output(n_clicks,start_date_picker,end_date_object): 
+def update_output(n_clicks,start_date_picker,end_date_object):
+    
     start_date = time.mktime(datetime.strptime(start_date_picker, "%Y-%m-%d").timetuple())
     end_date = time.mktime(datetime.strptime(end_date_object, "%Y-%m-%d").timetuple())
     client_id = '3blue'
@@ -710,14 +665,11 @@ def update_output(n_clicks,start_date_picker,end_date_object):
     global all_tables_div_init_form
     
     
-    username = request.authorization['username']
-    user_id = configHandler().getUserId(username)
-    # print(username)
-    # print(user_id)
     if n_clicks is not None:
         
-        temp = prepareDataframe(start_date=start_date,end_date=end_date,client_id=user_id)
-        # print(temp.shape)
+        temp = prepareDataframe(start_date=start_date,end_date=end_date)
+        print(temp.shape)
+        
         df = temp
         # global df
         # 1. update main df (data ranges beetween new time ranges )
@@ -811,9 +763,6 @@ def update_output(value):
 
 
 def generateMainRow():
-    
-    print("-"*100)
-    
     return dbc.Row(
     [
         dbc.Col(generateLeftPanel(), className='p-0 m-0 vh-100 hidden_scroll_bar'),

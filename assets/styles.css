@@ -1,0 +1,17 @@
+.hidden_scroll_bar {
+    overflow-y: scroll;
+    height: 100% !important;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+}
+.hidden_scroll_bar::-webkit-scrollbar { /* WebKit */
+    width: 0;
+    height: 0;
+}
+
+.date_range_filter_div{
+    display: flex;
+    flex-direction: row;
+    justify-content:space-between;
+    align-items: center;
+}

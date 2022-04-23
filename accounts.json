@@ -1,0 +1,14 @@
+{
+    "accounts": [
+        {
+            "username": "ali",
+            "password": "ali",
+            "user_id": "3blue"
+        },
+        {
+            "username": "khan",
+            "password": "khan",
+            "user_id": "khan"
+        }
+    ]
+}
