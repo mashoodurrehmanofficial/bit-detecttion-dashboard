@@ -125,6 +125,7 @@ venv.bak/
 *.db
 *.ipynb
 *test.ipynb
+*copy*.py
 test.ipynb
 /test.ipynb
 # mkdocs documentation
