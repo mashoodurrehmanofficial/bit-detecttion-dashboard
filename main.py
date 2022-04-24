@@ -14,13 +14,17 @@ from urllib.parse import urlparse
 import sqlite3,time,flask,base64
 from flask import request
 import dash_auth
+import mysql.connector as mysql
+
+
 try:
     from .jsonReader import configHandler
 except:
     from jsonReader import configHandler
 
 
-
+def formatInteger(num):
+    return f"{num:,}"
 
 def dict_factory(cursor, row):
     d = {}
@@ -33,9 +37,32 @@ end_date_object =date(2022, 4, 25)
 start_date = time.mktime(datetime.strptime(str(start_date_object), "%Y-%m-%d").timetuple())
 end_date = time.mktime(datetime.strptime(str(end_date_object), "%Y-%m-%d").timetuple())
 
+
+# Database Connection - > For a local .db file
+# ------------------------------------------------------------------------
 sql_data = 'database.db'
 conn = sqlite3.connect(sql_data,check_same_thread=False)
 conn.row_factory = dict_factory
+# ------------------------------------------------------------------------
+# Database Connection - > For a remote Mysql Server
+# enter your server IP address/domain name
+# HOST = "x.x.x.x" # or "domain.com"
+# # database name, if you want just to connect to MySQL server, leave it empty
+# DATABASE = "database"
+# # this is the user you create
+# USER = "python-user"
+# # user password
+# PASSWORD = "Password1$"
+# # connect to MySQL server
+# db_connection = mysql.connect(host=HOST, database=DATABASE, user=USER, password=PASSWORD)
+# print("Connected to:", db_connection.get_server_info())
+
+
+
+
+
+
+
 
 def prepareDataframe(start_date, end_date, client_id="3blue"):
     print("Preparing DF for ", client_id)
@@ -289,14 +316,14 @@ def getStatBarData():
         bots=0
 
     
-    return {
+    data= {
         "total_site_users":total_site_users,
         "humans":humans,
         "friendly_bots":friendly_bots,
         "malicious_bots":malicious_bots,
         "bots":bots,
     }
-
+    return data
 
 
 def generateStatBar():
@@ -324,7 +351,7 @@ def generateStatBar():
                     # Data Cards
                     dbc.Row(
                         [
-                            dbc.Col(generateStatPanelChilds(data= str(stat_panel_data['total_site_users']) ), className=stat_panel_child_classes),
+                            dbc.Col(generateStatPanelChilds(data= str(  formatInteger(stat_panel_data['total_site_users'])   )  ), className=stat_panel_child_classes),
                             dbc.Col(generateStatPanelChilds(data= str(stat_panel_data['bots'])+"%" ), className=stat_panel_child_classes),
                             dbc.Col(generateStatPanelChilds(data= str(stat_panel_data['humans'])+"%" ), className=stat_panel_child_classes),
                             dbc.Col(generateStatPanelChilds(data= str(stat_panel_data['friendly_bots'])+"%" ), className=stat_panel_child_classes),
@@ -451,12 +478,15 @@ def getMapData():
     percentage_humans = [str(x)+"%" for x in percentage_humans]
     percentage_friendly_bots = [str(x)+"%" for x in percentage_friendly_bots]
     percentage_malicious_bots = [str(x)+"%" for x in percentage_malicious_bots]
-    
-    
+    total_site_users_list = [formatInteger(x) for x in total_site_users_list]
+  
     
     columns = ['states','density','total_site_users','percentage_bots','percentage_humans','percentage_friendly_bots','percentage_malicious_bots']
-    return pd.DataFrame(data=zip(states,density,total_site_users_list,percentage_bots,percentage_humans,percentage_friendly_bots,percentage_malicious_bots), columns=columns) 
-
+    graph_df = pd.DataFrame(data=zip(states,density,total_site_users_list,percentage_bots,percentage_humans,percentage_friendly_bots,percentage_malicious_bots), columns=columns) 
+    
+    
+    
+    return graph_df
 
 def getGraph():
     global df
@@ -581,7 +611,7 @@ def generateTable(data,top_bar_required=True):
                 html.Tr(
                     [
                         html.Td(row[0]), 
-                        html.Td(row[1]), 
+                        html.Td(formatInteger(row[1])), 
                         html.Td(str(row[2])+"%"), 
                         html.Td(str(row[3])+"%"), 
                         html.Td(str(row[4])+"%"), 

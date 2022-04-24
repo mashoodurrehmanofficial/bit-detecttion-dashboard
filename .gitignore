@@ -123,6 +123,9 @@ venv.bak/
 # Rope project settings
 .ropeproject
 *.db
+*test.ipynb
+test.ipynb
+/test.ipynb
 # mkdocs documentation
 /site
 
