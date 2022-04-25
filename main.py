@@ -68,7 +68,7 @@ conn.row_factory = dict_factory
 
 
 def prepareDataframe(start_date, end_date, client_id=""):
-    print("Preparing DF for ", client_id)
+    # print("Preparing DF for ", client_id)
     query ="""SELECT `javascript.enabled`, `document.referrer`, validity, `server.country`, `server.useragent.info`, `server.region`, count(id) as visits FROM sample_sql_db
     WHERE `pixel.timestamp` > {}
     AND `pixel.timestamp` < {}
@@ -118,7 +118,7 @@ def getBotSourceDataTable():
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("facebook|t.co")    ]
         elif index==3:
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("site-tracking.com|fizzsy")    ]
-            print("------> ",temp_df2.shape)
+            # print("------> ",temp_df2.shape)
         elif index==4:
             temp_df2 = local_df[  (local_df['javascript.enabled'] == 'None') ]
             
