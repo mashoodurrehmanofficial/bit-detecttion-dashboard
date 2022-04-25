@@ -67,7 +67,7 @@ conn.row_factory = dict_factory
 
 
 
-def prepareDataframe(start_date, end_date, client_id="3blue"):
+def prepareDataframe(start_date, end_date, client_id=""):
     print("Preparing DF for ", client_id)
     query ="""SELECT `javascript.enabled`, `document.referrer`, validity, `server.country`, `server.useragent.info`, `server.region`, count(id) as visits FROM sample_sql_db
     WHERE `pixel.timestamp` > {}
@@ -747,7 +747,6 @@ def generateRightPanel():
 def update_output(n_clicks,start_date_picker,end_date_object): 
     start_date = time.mktime(datetime.strptime(start_date_picker, "%Y-%m-%d").timetuple())
     end_date = time.mktime(datetime.strptime(end_date_object, "%Y-%m-%d").timetuple())
-    client_id = '3blue'
     global df
     global bot_source_data_table_init_form
     global domain_data_table_init_form
