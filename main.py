@@ -15,6 +15,7 @@ import sqlite3,time,flask,base64
 from flask import request
 import dash_auth
 import mysql.connector as mysql
+from datetime import datetime,timedelta
 
 
 try:
@@ -32,8 +33,10 @@ def dict_factory(cursor, row):
         d[col[0]] = row[idx]
     return d
 
-start_date_object =date(2022, 4, 1)
-end_date_object =date(2022, 4, 25)
+today_date_object = datetime.now()
+start_date_object = (today_date_object - timedelta(days = 7)).date()
+end_date_object = (today_date_object - timedelta(days = 1)).date()
+
 start_date = time.mktime(datetime.strptime(str(start_date_object), "%Y-%m-%d").timetuple())
 end_date = time.mktime(datetime.strptime(str(end_date_object), "%Y-%m-%d").timetuple())
 
@@ -300,12 +303,20 @@ def getStatBarData():
     invalid_bots = temp_df[temp_df["validity"].str.contains("invalid")]["visits"].sum()
     total_bots = temp_df[temp_df["validity"].str.contains("invalid")]["visits"].sum() 
     friendly_bots = temp_df[temp_df["server.useragent.info"].str.contains("bot") & temp_df["server.useragent.info"].str.contains("Googlebot|BingBot|yandex|archive.org") ]["visits"].sum()
-    if total_bots>0: 
-        friendly_bots = round(friendly_bots/total_bots*100 ,2)
-    else:
-        friendly_bots = 0
+    # if total_bots>0: 
+    #     friendly_bots = friendly_bots
+    # else:
+    #     friendly_bots = 0
         
     malicious_bots = invalid_bots - friendly_bots
+    
+    if total_bots>0: 
+        friendly_bots = round(friendly_bots/total_bots*100 ,2)
+        # friendly_bots = friendly_bots
+    else:
+        friendly_bots = 0
+    
+    
     if total_bots>0:    
         malicious_bots = round(malicious_bots/total_bots*100,2)
     else:
@@ -649,7 +660,13 @@ country_data_table_init_form = getCountryDataTable()
 
 def generateDateFilterDiv():
     return html.Div(
-        [
+        [ 
+            dcc.ConfirmDialog(
+                id='date_range_error_span',
+                message="End date can't be greater than starting date !",
+            ),
+                    
+            
             html.Div(
                 [
                     html.Div(
@@ -717,9 +734,9 @@ def generateRightPanel():
 
 
 
-
+# "End date can't be greater than starting date !"
 @app.callback(
-    # Output('temp_span', 'children') ,
+    Output('date_range_error_span', 'displayed') ,
     Output('stat_panel_main_div', 'children') ,
     Output('map_panel_main_div', 'children') ,
     Output('all_tables_div', 'children') ,
@@ -738,6 +755,10 @@ def update_output(n_clicks,start_date_picker,end_date_object):
     global stat_bar_init_form
     global map_panel_init_form
     global all_tables_div_init_form
+    
+    if end_date<=start_date:
+        return  True,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
+    
     
     
     username = request.authorization['username']
@@ -764,9 +785,9 @@ def update_output(n_clicks,start_date_picker,end_date_object):
         
         
         
-        return  stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
+        return  False,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
     else:
-        return  stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
+        return  False,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
     
     
     
