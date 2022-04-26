@@ -676,8 +676,8 @@ def generateDateFilterDiv():
                 
             )
         ],
-        className="shadow  bg-white rounded p-2  sticky-top vw-100",
-        style={"position": "absolute",'top': '20px',"width":"49%"}
+        className="shadow  bg-white rounded p-2  sticky-top ",
+        style={"position": "absolute",'top': '10px',"width":"auto"}
         
     )
 
@@ -756,6 +756,7 @@ country_data_table_init_form = getCountryDataTable()
 def generateAllTablesDiv():
     return html.Div(
                 [
+                    html.Br(),
                     generateTable(data=bot_source_data_table_init_form),
                     html.Br(),
                     generateTable(data=domain_data_table_init_form),
