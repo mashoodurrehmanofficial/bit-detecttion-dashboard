@@ -652,7 +652,6 @@ def generateDateFilterDiv():
                 id='date_range_error_span',
                 message="End date can't be greater than starting date !",
             ),
-                    
             
             html.Div(
                 [
@@ -672,15 +671,13 @@ def generateDateFilterDiv():
                         ]
                     ),
                     dbc.Button("Fetch Data", color="primary", className="me-1",id="date_filter_submit_btn"),
-                    # html.Span("",id='temp_span')
-                    # dbc.Button("Fetch Data",size='lg', color="primary", className="me-1")
                 ],
                 className='date_range_filter_div'
                 
             )
         ],
-        className="shadow  bg-white rounded p-2  sticky-top ",
-        style={"position": "absolute",'top': '10px',"width":"49%"}
+        className="shadow  bg-white rounded p-2  sticky-top vw-100",
+        style={"position": "absolute",'top': '20px',"width":"49%"}
         
     )
 
