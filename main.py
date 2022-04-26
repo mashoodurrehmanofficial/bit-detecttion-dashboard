@@ -63,12 +63,25 @@ conn.row_factory = dict_factory
 
 
 
+app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+auth = dash_auth.BasicAuth(
+    app, 
+    configHandler().getUserPassDict() 
+)
+
 
 
 
 
 def prepareDataframe(start_date, end_date, client_id=""):
-    # print("Preparing DF for ", client_id)
+    global df
+    columns = ['javascript.enabled','document.referrer','validity','server.country','server.useragent.info','server.region','visits']
+    
+    if client_id=='':
+        df = pd.DataFrame([["","","","","","",0] for x in range(1)],columns=columns)
+        return df
+    
+    print("Preparing DF for ", client_id)
     query ="""SELECT `javascript.enabled`, `document.referrer`, validity, `server.country`, `server.useragent.info`, `server.region`, count(id) as visits FROM sample_sql_db
     WHERE `pixel.timestamp` > {}
     AND `pixel.timestamp` < {}
@@ -76,22 +89,18 @@ def prepareDataframe(start_date, end_date, client_id=""):
     GROUP BY `javascript.enabled`, `document.referrer`, validity, `server.country`, `server.useragent.info`, `server.region`
     ORDER BY visits DESC""".format(start_date, end_date, client_id)
     records = conn.execute(query).fetchall()
-    columns = ['javascript.enabled','document.referrer','validity','server.country','server.useragent.info','server.region','visits']
     df = pd.DataFrame(data=[x.values() for x in records],columns=columns)
     df['document.referrer'] = df['document.referrer'].astype(str)
     df['javascript.enabled'] = df['javascript.enabled'].astype(str)    
 
+    
+    
+    print("------>", df.shape)
+    
     return df
 
 
-VALID_USERNAME_PASSWORD_PAIRS = {
-    'hello': 'world'
-}
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
-auth = dash_auth.BasicAuth(
-    app, 
-    configHandler().getUserPassDict() 
-)
+
 
  
 
@@ -100,7 +109,7 @@ auth = dash_auth.BasicAuth(
 
 app.title = "Traffic Analysis"
 
-df = prepareDataframe(start_date=start_date,end_date=end_date)
+df = None
  
 def getBotSourceDataTable():
     alphabetical = ['Direct', 'Search', 'Social',  'Display' , 'Unknown']
@@ -118,7 +127,7 @@ def getBotSourceDataTable():
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("facebook|t.co")    ]
         elif index==3:
             temp_df2 = temp_df[  temp_df["document.referrer"].str.contains("site-tracking.com|fizzsy")    ]
-            # print("------> ",temp_df2.shape)
+            
         elif index==4:
             temp_df2 = local_df[  (local_df['javascript.enabled'] == 'None') ]
             
@@ -241,6 +250,8 @@ def getCountryDataTable():
 
 def getAllStates(country_name='United States'): 
     global df
+    df = prepareDataframe(start_date=start_date,end_date=end_date)
+    
     states = list(set(df['server.region'].values.tolist())) 
     states = list(set([x for x in states if str(x) not in  ['[NULL]', 'nan','NULL','NONE'] ]))
     states = [x for x in states if len(str(x))>0 and str(x)!='None' ]
@@ -338,6 +349,8 @@ def getStatBarData():
 
 
 def generateStatBar():
+    
+ 
     stat_panel_child_classes = "p-0 m-0"
     stat_panel_data = getStatBarData()
     stat_panel = dbc.Row(
@@ -388,7 +401,7 @@ def generateStatBar():
 
 
 
-stat_bar_init_form = generateStatBar()
+
 
 
 # ------------------------------------------------------------------------------------------------------
@@ -536,27 +549,6 @@ def generateMapPanel():
     )
 
 
-map_panel_init_form = generateMapPanel()
-
-
-
-
-
-# ------------------------------------------------------------------------------------------------------
-def generateLeftPanel():
-    return html.Div(
-    [
-        # Stat Panel
-        stat_bar_init_form, 
-        # Map Panel
-        map_panel_init_form  ,
-       
-        
-    ],  
-    className='vh-100 m-2',
-  
-    
-)
 
 
 
@@ -651,11 +643,6 @@ def generateTable(data,top_bar_required=True):
 
 
  
-bot_source_data_table_init_form = getBotSourceDataTable()
-domain_data_table_init_form = getDomainDataTabel()
-country_data_table_init_form = getCountryDataTable()
-
-
 
 
 def generateDateFilterDiv():
@@ -697,6 +684,77 @@ def generateDateFilterDiv():
         
     )
 
+# "End date can't be greater than starting date !"
+@app.callback(
+    Output('date_range_error_span', 'displayed') ,
+    Output('stat_panel_main_div', 'children') ,
+    Output('map_panel_main_div', 'children') ,
+    Output('all_tables_div', 'children') ,
+    Input('date_filter_submit_btn', 'n_clicks'), 
+    State('start_date_picker', 'date'),
+    State('end_date_picker', 'date'),
+)
+def update_output(n_clicks,start_date_picker,end_date_object): 
+    start_date = time.mktime(datetime.strptime(start_date_picker, "%Y-%m-%d").timetuple())
+    end_date = time.mktime(datetime.strptime(end_date_object, "%Y-%m-%d").timetuple())
+    global df
+    global bot_source_data_table_init_form
+    global domain_data_table_init_form
+    global country_data_table_init_form
+    global stat_bar_init_form
+    global map_panel_init_form
+    global all_tables_div_init_form
+    
+    if end_date<=start_date:
+        return  True,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
+    
+    
+    
+    username = request.authorization['username']
+    user_id = configHandler().getUserId(username)
+    print("="*50)
+    print(username)
+    print(user_id)
+    # if n_clicks is not None:
+        
+    temp = prepareDataframe(start_date=start_date,end_date=end_date,client_id=user_id)
+    # print(temp.shape)
+    df = temp
+    # global df
+    # 1. update main df (data ranges beetween new time ranges )
+    # 2. update stat panel
+    # 3. update states Dropdown
+    # 4. Update Map
+    # 5. update tables
+    bot_source_data_table_init_form = getBotSourceDataTable() 
+    domain_data_table_init_form = getDomainDataTabel()
+    country_data_table_init_form = getCountryDataTable()
+    stat_bar_init_form = generateStatBar()
+    map_panel_init_form = generateMapPanel()
+    all_tables_div_init_form = generateAllTablesDiv()
+        
+        
+        
+    return  False,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
+    # else:
+    #     return  False,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
+    
+    
+    
+
+
+
+
+
+
+
+
+
+bot_source_data_table_init_form = getBotSourceDataTable()
+domain_data_table_init_form = getDomainDataTabel()
+country_data_table_init_form = getCountryDataTable()
+
+
 
 def generateAllTablesDiv():
     return html.Div(
@@ -734,62 +792,7 @@ def generateRightPanel():
 
 
 
-# "End date can't be greater than starting date !"
-@app.callback(
-    Output('date_range_error_span', 'displayed') ,
-    Output('stat_panel_main_div', 'children') ,
-    Output('map_panel_main_div', 'children') ,
-    Output('all_tables_div', 'children') ,
-    Input('date_filter_submit_btn', 'n_clicks'), 
-    State('start_date_picker', 'date'),
-    State('end_date_picker', 'date'),
-)
-def update_output(n_clicks,start_date_picker,end_date_object): 
-    start_date = time.mktime(datetime.strptime(start_date_picker, "%Y-%m-%d").timetuple())
-    end_date = time.mktime(datetime.strptime(end_date_object, "%Y-%m-%d").timetuple())
-    global df
-    global bot_source_data_table_init_form
-    global domain_data_table_init_form
-    global country_data_table_init_form
-    global stat_bar_init_form
-    global map_panel_init_form
-    global all_tables_div_init_form
-    
-    if end_date<=start_date:
-        return  True,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
-    
-    
-    
-    username = request.authorization['username']
-    user_id = configHandler().getUserId(username)
-    # print(username)
-    # print(user_id)
-    if n_clicks is not None:
-        
-        temp = prepareDataframe(start_date=start_date,end_date=end_date,client_id=user_id)
-        # print(temp.shape)
-        df = temp
-        # global df
-        # 1. update main df (data ranges beetween new time ranges )
-        # 2. update stat panel
-        # 3. update states Dropdown
-        # 4. Update Map
-        # 5. update tables
-        bot_source_data_table_init_form = getBotSourceDataTable() 
-        domain_data_table_init_form = getDomainDataTabel()
-        country_data_table_init_form = getCountryDataTable()
-        stat_bar_init_form = generateStatBar()
-        map_panel_init_form = generateMapPanel()
-        all_tables_div_init_form = generateAllTablesDiv()
-        
-        
-        
-        return  False,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
-    else:
-        return  False,stat_bar_init_form, map_panel_init_form, all_tables_div_init_form
-    
-    
-    
+
 
 @app.callback(
     Output('bot_sources', 'children'),
@@ -857,6 +860,26 @@ def update_output(value):
             
          
         return generateTable(temp_data,top_bar_required=False)
+
+
+
+
+map_panel_init_form = generateMapPanel()
+stat_bar_init_form = generateStatBar()
+
+# ------------------------------------------------------------------------------------------------------
+def generateLeftPanel():
+    return html.Div(
+    [
+        # Stat Panel
+        stat_bar_init_form, 
+        # Map Panel
+        map_panel_init_form  ,
+       
+        
+    ],  
+    className='vh-100 m-2',
+)
 
 
 
