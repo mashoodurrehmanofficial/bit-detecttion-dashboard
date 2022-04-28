@@ -677,7 +677,7 @@ def generateDateFilterDiv():
             )
         ],
         className="shadow  bg-white rounded p-2  sticky-top ",
-        style={"position": "absolute",'top': '10px',"width":"auto"}
+        style={"position": "absolute",'top': '10px',"width":"49%"}
         
     )
 
